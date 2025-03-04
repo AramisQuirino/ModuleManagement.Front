@@ -1,0 +1,91 @@
+﻿@inject LanguageService LanguageService
+
+<div class="bg-indigo-900 p-4 flex items-center justify-between">
+    <a class="text-white text-lg font-bold">ModuleManagement.Front</a>
+    <button title="Navigation menu" class="text-white p-2" @onclick="ToggleNavMenu">
+        <span class="@(collapseNavMenu ? "bi bi-x" : "bi bi-list")" aria-hidden="true"></span>
+    </button>
+</div>
+
+<!-- Quité el @onclick aquí para evitar que cada clic en el contenedor altere el estado -->
+<div class="@NavMenuCssClass bg-indigo-900 transition-all duration-300 ease-in-out">
+    <nav class="p-4 space-y-2">
+        <!-- Opción: Empresas -->
+        <div class="relative group">
+            <NavLink class="@NavLinkClass" href="/companies">
+                <span class="bi bi-building-fill mr-2"></span>
+                @if (!IsCollapsed)
+                {
+                    <span>@LanguageService.Translate("CompaniesTitle")</span>
+                }
+            </NavLink>
+            @if (IsCollapsed)
+            {
+                <!-- Tooltip que solo se muestra cuando está colapsado -->
+                <span class="pointer-events-none absolute left-full top-1/2 transform -translate-y-1/2 ml-2
+                             whitespace-nowrap bg-gray-900 text-white text-xs rounded px-2 py-1
+                             opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50">
+                    @LanguageService.Translate("CompaniesTitle")
+                </span>
+            }
+        </div>
+
+        <!-- Opción: Agenda (Scheduler) -->
+        <div class="relative group">
+            <NavLink class="@NavLinkClass" href="/multischeduler">
+                <span class="bi bi-calendar-fill mr-2"></span>
+                @if (!IsCollapsed)
+                {
+                    <span>@LanguageService.Translate("SchedulerTitle")</span>
+                }
+            </NavLink>
+            @if (IsCollapsed)
+            {
+                <span class="pointer-events-none absolute left-full top-1/2 transform -translate-y-1/2 ml-2
+                             whitespace-nowrap bg-gray-900 text-white text-xs rounded px-2 py-1
+                             opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    @LanguageService.Translate("SchedulerTitle")
+                </span>
+            }
+        </div>
+
+        <!-- Puedes agregar más opciones siguiendo la misma lógica -->
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = false; // Menú colapsado: false = expandido, true = colapsado
+    private bool IsCollapsed => collapseNavMenu;
+
+    private string NavMenuCssClass => collapseNavMenu ? "w-16" : "w-64";
+
+    private string NavLinkClass
+    {
+        get
+        {
+            var baseClasses = "nav-link text-white hover:text-blue-400 hover:bg-indigo-800 flex items-center px-4 py-2 rounded transition-colors duration-200";
+            var dynamicClasses = IsCollapsed ? "justify-center" : "justify-start";
+            return $"{baseClasses} {dynamicClasses}";
+        }
+    }
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+        Console.WriteLine($"Menú colapsado: {collapseNavMenu}");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var storedLanguage = await LanguageService.GetStoredLanguageAsync();
+            await LanguageService.LoadLanguageAsync(storedLanguage);
+            Console.WriteLine($"Idioma cargado: {storedLanguage}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al cargar el idioma: {ex.Message}");
+        }
+    }
+}

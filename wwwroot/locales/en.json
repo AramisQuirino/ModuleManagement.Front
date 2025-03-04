@@ -1,0 +1,21 @@
+﻿{
+  "CompanyNameLabel": "Company Name",
+  "DescriptionLabel": "Description",
+  "LogoUrlLabel": "Logo URL",
+  "WebsiteUrlLabel": "Website URL",
+  "ActiveLabel": "Active",
+  "CreationDateLabel": "Creation Date",
+  "UserCreationLabel": "Created By",
+  "ModificationDateLabel": "Modification Date",
+  "UserModificationLabel": "Modified By",
+  "CompaniesTitle": "Companies",
+  "NewCompanyButton": "New Company",
+  "NoCompaniesFound": "No companies found.",
+  "CancelButton": "Cancel",
+  "SaveButton": "Save",
+  "ConfirmDeleteMessage": "Are you sure you want to delete '{0}'?",
+  "EditButton": "Edit",
+  "DeleteButton": "Delete",
+  "SchedulerTitle": "Schedule",
+  "ConfirmDeleteTitle": "Confirm deletion"
+}

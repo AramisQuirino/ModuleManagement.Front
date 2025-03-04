@@ -1,0 +1,21 @@
+﻿{
+  "CompanyNameLabel": "Nombre de la Empresa",
+  "DescriptionLabel": "Descripción",
+  "LogoUrlLabel": "URL del Logo",
+  "WebsiteUrlLabel": "URL del Sitio Web",
+  "ActiveLabel": "Activo",
+  "CreationDateLabel": "Fecha de Creación",
+  "UserCreationLabel": "Usuario de Creación",
+  "ModificationDateLabel": "Fecha de Modificación",
+  "UserModificationLabel": "Usuario de Modificación",
+  "CompaniesTitle": "Empresas",
+  "NewCompanyButton": "Nueva Empresa",
+  "NoCompaniesFound": "No se encontraron empresas.",
+  "CancelButton": "Cancelar",
+  "SaveButton": "Guardar",
+  "ConfirmDeleteMessage": "¿Estás seguro de que deseas eliminar '{0}'?",
+  "EditButton": "Editar",
+  "DeleteButton": "Eliminar",
+  "SchedulerTitle": "Agenda",
+  "ConfirmDeleteTitle": "Confirmar eliminación"
+}

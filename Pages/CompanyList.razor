@@ -1,0 +1,228 @@
+﻿@page "/companies"
+@using ModuleManagement.Web.Client.Models
+@using ModuleManagement.Web.Client.Services
+@inject ICompanyService CompanyService
+@inject LanguageService LanguageService
+@inject IJSRuntime JsRuntime
+@inject NavigationManager NavigationManager
+
+<PageTitle>@LanguageService.Translate("CompaniesTitle")</PageTitle>
+
+<div class="max-w-7xl mx-auto px-4 py-6">
+    @if (companies == null)
+    {
+        <p class="text-gray-600">Cargando empresas...</p>
+    }
+    else if (!companies.Any())
+    {
+        <p class="text-gray-600">@LanguageService.Translate("NoCompaniesFound")</p>
+    }
+    else
+    {
+        <!-- Encabezado de la sección -->
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-3xl font-bold text-gray-800">@LanguageService.Translate("CompaniesTitle")</h3>
+            <button class="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 shadow" @onclick="ShowAddModal">
+                @LanguageService.Translate("NewCompanyButton")
+            </button>
+        </div>
+
+        <!-- Tabla de empresas -->
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 bg-white rounded-lg shadow">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            @LanguageService.Translate("CompanyNameLabel")
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            @LanguageService.Translate("DescriptionLabel")
+                        </th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Acciones
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    @foreach (var company in companies)
+                    {
+                        <tr class="hover:bg-gray-100">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                @company.Name
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                @company.Description
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                <button class="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 mr-2 shadow" @onclick="() => ShowEditModal(company)">
+                                    @LanguageService.Translate("EditButton")
+                                </button>
+                                <button class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 shadow" @onclick="() => PromptDeleteCompany(company.IdCompany)">
+                                    @LanguageService.Translate("DeleteButton")
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<!-- Modal para agregar/editar empresa -->
+@if (showModal)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+            <h4 class="text-2xl font-bold mb-4">
+                @(editingCompany == null ? LanguageService.Translate("NewCompanyButton") : LanguageService.Translate("EditButton"))
+            </h4>
+            <div class="space-y-4">
+                <input type="text" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="@LanguageService.Translate("CompanyNameLabel")" @bind="newCompany.Name" />
+                <textarea class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="@LanguageService.Translate("DescriptionLabel")" @bind="newCompany.Description"></textarea>
+            </div>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 shadow" @onclick="HideModal">
+                    @LanguageService.Translate("CancelButton")
+                </button>
+                <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow" @onclick="SaveCompany">
+                    @LanguageService.Translate("SaveButton")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal de confirmación para eliminar empresa -->
+@if (showConfirmModal && companyToDelete != null)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-sm">
+            <h4 class="text-xl font-bold mb-4">@LanguageService.Translate("ConfirmDeleteTitle")</h4>
+            <p class="mb-6">
+                @LanguageService.Translate("ConfirmDeleteMessage").Replace("{0}", companyToDelete.Name)
+            </p>
+            <div class="flex justify-end space-x-3">
+                <button class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 shadow" @onclick="CancelDelete">
+                    @LanguageService.Translate("CancelButton")
+                </button>
+                <button class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 shadow" @onclick="ConfirmDelete">
+                    @LanguageService.Translate("DeleteButton")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Company>? companies;
+    private Company newCompany = new Company();
+    private Company? editingCompany;
+    private bool showModal = false;
+
+    // Variables para confirmación de eliminación
+    private bool showConfirmModal = false;
+    private Company? companyToDelete = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var storedLanguage = await LanguageService.GetStoredLanguageAsync();
+        await LanguageService.LoadLanguageAsync(storedLanguage);
+
+        try
+        {
+            companies = await CompanyService.GetCompaniesAsync(0);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al cargar empresas: {ex.Message}");
+        }
+    }
+
+    private void ShowAddModal()
+    {
+        newCompany = new Company();
+        editingCompany = null;
+        showModal = true;
+    }
+
+    private void ShowEditModal(Company company)
+    {
+        newCompany = new Company
+            {
+                IdCompany = company.IdCompany,
+                Name = company.Name,
+                Description = company.Description
+            };
+        editingCompany = company;
+        showModal = true;
+    }
+
+    private async Task SaveCompany()
+    {
+        try
+        {
+            if (editingCompany == null)
+            {
+                var id = await CompanyService.CreateCompanyAsync(newCompany);
+                newCompany.IdCompany = id;
+                companies.Add(newCompany);
+            }
+            else
+            {
+                await CompanyService.UpdateCompanyAsync(newCompany);
+                var index = companies.FindIndex(c => c.IdCompany == newCompany.IdCompany);
+                if (index != -1)
+                {
+                    companies[index] = newCompany;
+                }
+            }
+            HideModal();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al guardar empresa: {ex.Message}");
+        }
+    }
+
+    // En lugar de DeleteCompany, mostramos un modal de confirmación
+    private void PromptDeleteCompany(int idCompany)
+    {
+        companyToDelete = companies.FirstOrDefault(c => c.IdCompany == idCompany);
+        if (companyToDelete != null)
+        {
+            showConfirmModal = true;
+        }
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (companyToDelete != null)
+        {
+            try
+            {
+                await CompanyService.DeleteCompanyAsync(companyToDelete.IdCompany);
+                companies.RemoveAll(c => c.IdCompany == companyToDelete.IdCompany);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al eliminar empresa: {ex.Message}");
+            }
+        }
+        showConfirmModal = false;
+        companyToDelete = null;
+    }
+
+    private void CancelDelete()
+    {
+        showConfirmModal = false;
+        companyToDelete = null;
+    }
+
+    private void HideModal()
+    {
+        showModal = false;
+        newCompany = new Company();
+        editingCompany = null;
+    }
+}

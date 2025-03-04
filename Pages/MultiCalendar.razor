@@ -1,0 +1,466 @@
+﻿@page "/multischeduler"
+@using ModuleManagement.Web.Client.Models
+@using Microsoft.AspNetCore.Components.Forms
+
+<h1 class="text-3xl font-bold text-center mb-6">Calendario de Citas</h1>
+
+<!-- Contenedor con scroll y altura fija -->
+<div class="overflow-auto border border-gray-300 rounded shadow bg-white relative" style="width: 100%; height: 800px;">
+
+    <!-- Encabezado "sticky" con profesionales -->
+    <div class="flex bg-gray-100 border-b border-gray-300 sticky top-0 z-10">
+        <!-- Columna de horas vacía en la esquina superior izquierda -->
+        <div class="w-16 font-bold text-center border-r p-2 border-gray-300">
+            Hora
+        </div>
+        @foreach (var prof in ProfessionalsList)
+        {
+            <div class="flex-1 text-center font-bold border-r p-2 border-gray-300">
+                @prof.Name
+            </div>
+        }
+    </div>
+
+    <!-- Cuerpo del calendario (ALTURA FIJA) -->
+    <!-- De 8:00 a 18:00 => 10 horas = 600 min; con intervalos de 15 min => 40 intervalos * 30px = 1200px -->
+    <div class="flex relative" style="height: 1200px;">
+
+        <!-- Columna de horas (lado izquierdo) con sticky -->
+        <div class="w-16 border-r border-gray-300 bg-white" style="position: sticky; left: 0; z-index: 9;">
+            @for (int i = 0; i < 40; i++)
+            {
+                var slotTime = DayStart.AddMinutes(i * 15);
+                <div class="h-[30px] text-xs text-gray-600 border-b border-gray-200 flex items-center justify-center">
+                    @slotTime.ToString("HH:mm")
+                </div>
+            }
+        </div>
+
+        <!-- Columnas para cada profesional -->
+        <div class="flex-1 flex overflow-hidden">
+            @foreach (var prof in ProfessionalsList)
+            {
+                <!-- Cada columna con position: relative -->
+                <div class="relative border-r border-gray-300 flex-1"
+                     style="height:1200px;"
+                     @onpointerdown="(args) => OnColumnPointerDown(args, prof)">
+
+                    <!-- Líneas de fondo (opcional) -->
+                    @for (int i = 0; i < 40; i++)
+                    {
+                        <div class="absolute left-0 right-0 border-b border-gray-200"
+                             style="top:@(i*SlotSizePx)px; height:@SlotSizePx px;">
+                        </div>
+                    }
+
+                    <!-- Citas de este profesional -->
+                    @foreach (var appt in AppointmentsList.Where(a => a.IdProfessional == prof.IdProfessional))
+                    {
+                        var topPx = GetOffsetPx(appt.Date);
+                        var heightPx = GetHeightPx(appt.Date, appt.EndTime ?? appt.Date.AddMinutes(30));
+
+                        <div class="absolute bg-blue-100 shadow rounded p-2 cursor-pointer"
+                             style="top:@($"{topPx}px"); height:@($"{heightPx}px"); left:5px; right:5px; background-color: @prof.Color"
+                             @onclick="() => OpenAppointmentDetail(appt)">
+                            <div class="font-semibold text-sm">@GetClientName(appt.IdClient)</div>
+                            <div class="text-xs">@appt.CustomerNote</div>
+                            <div class="mt-1 text-xs">
+                                @appt.Date.ToString("HH:mm") - @(appt.EndTime?.ToString("HH:mm"))
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Agregar/Editar Cita -->
+@if (ShowModal)
+{
+    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md">
+            <div class="flex justify-between items-center bg-blue-500 text-white px-4 py-2 rounded-t-lg">
+                <h5 class="text-lg font-bold">
+                    @((SelectedAppointment == null) ? $"Agregar Cita para {SelectedProfessional?.Name}" : "Editar Cita")
+                </h5>
+                <button class="text-white focus:outline-none" @onclick="CloseModal">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-4">
+                <EditForm Model="@NewAppointment" OnValidSubmit="HandleValidSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <!-- Selección de Cliente -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+                        <select class="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring focus:border-blue-300"
+                                @bind="NewAppointment.IdClient">
+                            <option value="">-- Seleccione un cliente --</option>
+                            @foreach (var client in ClientsList)
+                            {
+                                <option value="@client.IdClient">@client.Name @client.Surname</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Asunto -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Asunto</label>
+                        <InputText class="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring focus:border-blue-300"
+                                   @bind-Value="NewAppointment.CustomerNote" />
+                    </div>
+
+                    <!-- Hora de Inicio -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Hora de Inicio</label>
+                        <InputText class="border border-gray-300 rounded px-3 py-2 w-full bg-gray-100"
+                                   @bind-Value="NewAppointment.DateStr" Disabled="true" />
+                    </div>
+
+                    <!-- Hora de Fin -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Hora de Fin</label>
+                        <InputText class="border border-gray-300 rounded px-3 py-2 w-full bg-gray-100"
+                                   @bind-Value="NewAppointment.EndTimeStr" Disabled="true" />
+                    </div>
+
+                    <!-- Selección Múltiple de Servicios -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Servicios</label>
+                        <select multiple class="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring focus:border-blue-300"
+                                @onchange="OnServicesChanged">
+                            @foreach (var service in ServicesList)
+                            {
+                                <option value="@service.IdService">@service.Name (@service.Duration min.)</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Profesional -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Profesional</label>
+                        <input type="text" class="border border-gray-300 rounded px-3 py-2 w-full bg-gray-100"
+                               value="@(SelectedProfessional?.Name)" disabled />
+                    </div>
+
+                    <div class="flex justify-end space-x-2 mt-4">
+                        <button type="button" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600" @onclick="CloseModal">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                            Guardar
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal de Detalle de Cita -->
+@if (ShowDetailModal)
+{
+    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md">
+            <div class="flex justify-between items-center bg-teal-500 text-white px-4 py-2 rounded-t-lg">
+                <h5 class="text-lg font-bold">Detalle de Cita</h5>
+                <button class="text-white focus:outline-none" @onclick="CloseDetailModal">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-4">
+                <div class="mb-2"><strong>Cliente:</strong> @GetClientName(SelectedAppointment?.IdClient ?? 0)</div>
+                <div class="mb-2"><strong>Asunto:</strong> @SelectedAppointment?.CustomerNote</div>
+                <div class="mb-2"><strong>Inicio:</strong> @SelectedAppointment?.Date.ToString("HH:mm")</div>
+                <div class="mb-2"><strong>Fin:</strong> @SelectedAppointment?.EndTime?.ToString("HH:mm")</div>
+                <div class="mb-2"><strong>Profesional:</strong> @GetProfessionalName(SelectedAppointment?.IdProfessional ?? 0)</div>
+            </div>
+            <div class="flex justify-end space-x-2 p-4 border-t">
+                <button type="button" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400" @onclick="CloseDetailModal">
+                    Cerrar
+                </button>
+                <button type="button" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" @onclick="EditAppointment">
+                    Editar
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    // Configuración: 8:00 a 18:00 => 10 horas => 600 min => con intervalos de 15 min => 40 intervalos * 30px = 1200 px
+    DateTime DayStart = DateTime.Today.AddHours(8);
+    DateTime DayEnd = DateTime.Today.AddHours(18);
+    private int SlotSizePx = 30; // px por cada 15 min
+
+    // Datos de ejemplo
+    public List<Professionals> ProfessionalsList { get; set; } = new List<Professionals>
+    {
+        new Professionals { IdProfessional = 1, Name = "Dr. John Doe", Color = "#ea7a57" },
+        new Professionals { IdProfessional = 2, Name = "Dra. Alice Smith", Color = "rgb(53, 124, 210)" },
+        new Professionals { IdProfessional = 3, Name = "Dr. Robson Lee", Color = "#7fa900" }
+    };
+
+    public List<Client> ClientsList { get; set; } = new List<Client>
+    {
+        new Client { IdClient = 1, Name = "Juan", Surname = "Pérez" },
+        new Client { IdClient = 2, Name = "María", Surname = "García" },
+        new Client { IdClient = 3, Name = "Carlos", Surname = "Ramírez" }
+    };
+
+    public List<Services> ServicesList { get; set; } = new List<Services>
+    {
+        new Services { IdService = 1, Name = "Consulta General", Duration = "30" },
+        new Services { IdService = 2, Name = "Terapia", Duration = "45" },
+        new Services { IdService = 3, Name = "Chequeo", Duration = "60" }
+    };
+
+    // Lista de citas
+    public List<Appointment> AppointmentsList { get; set; } = new List<Appointment>();
+
+    // Modales
+    bool ShowModal { get; set; } = false;
+    bool ShowDetailModal { get; set; } = false;
+    Appointment? SelectedAppointment { get; set; }
+    Professionals? SelectedProfessional { get; set; }
+
+    // Modelo auxiliar
+    public NewAppointmentModel NewAppointment { get; set; } = new NewAppointmentModel();
+    public List<int> SelectedServiceIds { get; set; } = new List<int>();
+
+    // Al hacer clic en la columna para crear cita, se evita empalmes
+    private void OnColumnPointerDown(PointerEventArgs args, Professionals prof)
+    {
+        double offsetY = args.OffsetY;
+        double intervals = offsetY / SlotSizePx;
+        var clickedTime = DayStart.AddMinutes(intervals * 15);
+
+        // Buscar la última cita terminada antes del clic para evitar empalmes
+        var lastAppt = AppointmentsList
+                         .Where(a => a.IdProfessional == prof.IdProfessional && a.EndTime <= clickedTime)
+                         .OrderByDescending(a => a.EndTime)
+                         .FirstOrDefault();
+        DateTime apptStart = lastAppt != null ? lastAppt.EndTime.Value : clickedTime;
+        if (apptStart < DayStart)
+            apptStart = DayStart;
+        if (apptStart >= DayEnd)
+            apptStart = DayEnd.AddMinutes(-15);
+
+        // Duración por defecto: 30 min
+        var apptEnd = apptStart.AddMinutes(30);
+        if (apptEnd > DayEnd)
+            apptEnd = DayEnd;
+
+        SelectedAppointment = null;
+        SelectedProfessional = prof;
+        NewAppointment = new NewAppointmentModel
+            {
+                IdProfessional = prof.IdProfessional,
+                CustomerNote = "",
+                Date = apptStart,
+                EndDate = apptEnd,
+                ServiceIds = new List<int>()
+            };
+        NewAppointment.DateStr = apptStart.ToString("HH:mm");
+        NewAppointment.EndTimeStr = apptEnd.ToString("HH:mm");
+
+        ShowModal = true;
+        StateHasChanged();
+    }
+
+    // Calcula la posición (top) en px dada una fecha/hora
+    private int GetOffsetPx(DateTime startTime)
+    {
+        var totalMinutes = (startTime - DayStart).TotalMinutes;
+        double intervals = totalMinutes / 15;
+        return (int)(intervals * SlotSizePx);
+    }
+
+    // Calcula la altura en px dado un rango
+    private int GetHeightPx(DateTime startTime, DateTime endTime)
+    {
+        var totalMinutes = (endTime - startTime).TotalMinutes;
+        double intervals = totalMinutes / 15;
+        return (int)(intervals * SlotSizePx);
+    }
+
+    // Helpers de creación/edición de citas
+    async Task HandleValidSubmit()
+    {
+        if (SelectedAppointment == null)
+        {
+            // Nueva cita
+            var newAppt = new Appointment
+                {
+                    IdAppointment = AppointmentsList.Count + 1,
+                    IdClient = NewAppointment.IdClient,
+                    IdProfessional = NewAppointment.IdProfessional,
+                    Date = NewAppointment.Date,
+                    EndTime = NewAppointment.EndDate,
+                    CustomerNote = NewAppointment.CustomerNote,
+                    IdStatus = 1
+                };
+            AppointmentsList.Add(newAppt);
+        }
+        else
+        {
+            // Editar cita existente
+            SelectedAppointment.IdClient = NewAppointment.IdClient;
+            SelectedAppointment.IdProfessional = NewAppointment.IdProfessional;
+            SelectedAppointment.Date = NewAppointment.Date;
+            SelectedAppointment.EndTime = NewAppointment.EndDate;
+            SelectedAppointment.CustomerNote = NewAppointment.CustomerNote;
+        }
+        ShowModal = false;
+        StateHasChanged();
+    }
+
+    void CloseModal() => ShowModal = false;
+
+    // Manejo de servicios seleccionados
+    async Task OnServicesChanged(ChangeEventArgs e)
+    {
+        if (e.Value is IEnumerable<object> values)
+        {
+            SelectedServiceIds = values.Select(v => int.Parse(v.ToString()!)).ToList();
+        }
+        else if (e.Value is string single)
+        {
+            SelectedServiceIds = new List<int> { int.Parse(single) };
+        }
+        RecalculateEndTime();
+        await Task.CompletedTask;
+    }
+
+    // Recalcula la hora de fin según la duración de servicios
+    void RecalculateEndTime()
+    {
+        int totalMinutes = 0;
+        foreach (var serviceId in SelectedServiceIds)
+        {
+            var service = ServicesList.FirstOrDefault(s => s.IdService == serviceId);
+            if (service != null && int.TryParse(service.Duration, out int minutes))
+            {
+                totalMinutes += minutes;
+            }
+        }
+        if (totalMinutes > 0)
+        {
+            NewAppointment.EndDate = NewAppointment.Date.AddMinutes(totalMinutes);
+        }
+        else
+        {
+            NewAppointment.EndDate = NewAppointment.Date.AddMinutes(30); // Por defecto 30 min
+        }
+        NewAppointment.EndTimeStr = NewAppointment.EndDate.ToString("HH:mm");
+    }
+
+    // Abrir detalle
+    void OpenAppointmentDetail(Appointment appt)
+    {
+        SelectedAppointment = appt;
+        NewAppointment = new NewAppointmentModel
+            {
+                IdClient = appt.IdClient,
+                IdProfessional = appt.IdProfessional,
+                Date = appt.Date,
+                EndDate = appt.EndTime ?? appt.Date.AddMinutes(30),
+                CustomerNote = appt.CustomerNote,
+                DateStr = appt.Date.ToString("HH:mm"),
+                EndTimeStr = (appt.EndTime ?? appt.Date.AddMinutes(30)).ToString("HH:mm"),
+
+            };
+        ShowDetailModal = true;
+    }
+
+    void CloseDetailModal() => ShowDetailModal = false;
+    void EditAppointment()
+    {
+        // Pasa a modo edición
+        ShowDetailModal = false;
+        ShowModal = true;
+    }
+
+    // Helpers
+    string GetClientName(int clientId)
+    {
+        var client = ClientsList.FirstOrDefault(c => c.IdClient == clientId);
+        return client != null ? $"{client.Name} {client.Surname}" : "Sin Nombre";
+    }
+
+    // Ejemplo de Status
+    public List<Status> StatusList { get; set; } = new List<Status>
+    {
+        new Status { IdStatus = 1, Name = "Confirmado", Color = "#28a745" },
+        new Status { IdStatus = 2, Name = "Pendiente", Color = "#ffc107" },
+        new Status { IdStatus = 3, Name = "Cancelado", Color = "#dc3545" }
+    };
+
+    // Podrías usarlo si deseas colorear la cita según status
+    string GetStatusColor(int statusId)
+        => StatusList.FirstOrDefault(s => s.IdStatus == statusId)?.Color ?? "#6c757d";
+
+    string GetProfessionalName(int professionalId) =>
+        ProfessionalsList.FirstOrDefault(p => p.IdProfessional == professionalId)?.Name ?? "Sin Profesional";
+
+    // Modelos de ejemplo
+    public class NewAppointmentModel
+    {
+        public int IdClient { get; set; }
+        public int IdProfessional { get; set; }
+        public DateTime Date { get; set; }
+        public DateTime EndDate { get; set; }
+        public string CustomerNote { get; set; } = string.Empty;
+        public string DateStr { get; set; } = string.Empty;
+        public string EndTimeStr { get; set; } = string.Empty;
+        public List<int> ServiceIds { get; set; } = new List<int>();
+    }
+
+    public class Professionals
+    {
+        public int IdProfessional { get; set; }
+        public string Name { get; set; } = "";
+        public string Color { get; set; } = "#000";
+    }
+
+    public class Appointment
+    {
+        public int IdAppointment { get; set; }
+        public int IdClient { get; set; }
+        public int IdProfessional { get; set; }
+        public DateTime Date { get; set; }
+        public DateTime? EndTime { get; set; }
+        public string CustomerNote { get; set; } = "";
+        public int IdStatus { get; set; }
+    }
+
+    public class Client
+    {
+        public int IdClient { get; set; }
+        public string Name { get; set; } = "";
+        public string Surname { get; set; } = "";
+    }
+
+    public class Services
+    {
+        public int IdService { get; set; }
+        public string Name { get; set; } = "";
+        public string Duration { get; set; } = "30";
+    }
+
+    public class Status
+    {
+        public int IdStatus { get; set; }
+        public string Name { get; set; } = "";
+        public string Color { get; set; } = "";
+    }
+}

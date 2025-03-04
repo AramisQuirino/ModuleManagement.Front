@@ -1,0 +1,13 @@
+﻿@page "/"
+@inject LanguageService LanguageService
+
+<h1 class="text-3xl font-bold text-gray-800 mb-4">@LanguageService.Translate("welcome")</h1>
+<p class="text-gray-600">¡Hola, Tailwind!</p>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var storedLanguage = await LanguageService.GetStoredLanguageAsync();
+        await LanguageService.LoadLanguageAsync(storedLanguage);
+    }
+}

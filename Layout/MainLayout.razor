@@ -1,0 +1,160 @@
+﻿@inherits LayoutComponentBase
+@inject LanguageService LanguageService
+
+<div class="flex h-screen overflow-hidden">
+
+    <!-- Sidebar (barra lateral) -->
+    <aside class="@SidebarCssClass bg-indigo-700 text-white flex flex-col transition-all duration-300 ease-in-out">
+        <!-- Branding -->
+        <div class="flex items-center h-16 px-4 border-b border-indigo-500">
+            @if (!IsCollapsed)
+            {
+                <span class="font-bold text-xl">SystemPro</span>
+            }
+            else
+            {
+                <span class="font-bold text-xl">SP</span>
+            }
+        </div>
+
+        <!-- Opciones de menú -->
+        <nav class="mt-2 space-y-2 @(IsCollapsed ? "" : "overflow-y-auto")">
+            <!-- Opción: Empresas -->
+            <div class="relative group">
+                <NavLink class="@NavLinkClass" href="/companies" Match="NavLinkMatch.All">
+                    <span class="bi bi-building-fill text-2xl"></span>
+                    @if (!IsCollapsed)
+                    {
+                        <span class="ml-2">@LanguageService.Translate("CompaniesTitle")</span>
+                    }
+                </NavLink>
+                @if (IsCollapsed)
+                {
+                    <!-- Tooltip para Empresas -->
+                    <span class="pointer-events-none absolute left-full top-1/2 transform -translate-y-1/2 ml-2 whitespace-nowrap bg-gray-900 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50">
+                        @LanguageService.Translate("CompaniesTitle")
+                    </span>
+                }
+            </div>
+
+            <!-- Opción: Agenda (Scheduler) -->
+            <div class="relative group">
+                <NavLink class="@NavLinkClass" href="/multischeduler">
+                    <span class="bi bi-calendar-fill text-2xl"></span>
+                    @if (!IsCollapsed)
+                    {
+                        <span class="ml-2">@LanguageService.Translate("SchedulerTitle")</span>
+                    }
+                </NavLink>
+                @if (IsCollapsed)
+                {
+                    <!-- Tooltip para Agenda -->
+                    <span class="pointer-events-none absolute left-full top-1/2 transform -translate-y-1/2 ml-2 whitespace-nowrap bg-gray-900 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        @LanguageService.Translate("SchedulerTitle")
+                    </span>
+                }
+            </div>
+            <!-- Agrega más opciones de menú según necesites -->
+        </nav>
+    </aside>
+
+    <!-- Contenido principal -->
+    <div class="flex-1 flex flex-col">
+        <!-- Header (barra superior) -->
+        <header class="flex items-center bg-white shadow px-4 h-16">
+            <!-- Botón para colapsar/expandir sidebar -->
+            <button class="text-indigo-700 mr-4" @onclick="ToggleSidebar">
+                <span class="bi bi-list text-2xl"></span>
+            </button>
+
+            <!-- Espacio flexible -->
+            <div class="flex-1"></div>
+
+            <!-- Contenedor para selector de idioma y área de usuario -->
+            <div class="flex items-center space-x-4">
+                <!-- Selector de Idioma -->
+                <div class="relative">
+                    <button @onclick="ToggleLanguageDropdown" class="flex items-center px-3 py-2 bg-gray-100 rounded shadow-sm focus:outline-none">
+                        <span class="mr-2 text-gray-800">@CurrentLanguageLabel</span>
+                        <svg class="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.25 8.29a.75.75 0 01-.02-1.06z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    @if (IsLanguageDropdownOpen)
+                    {
+                        <div class="absolute right-0 mt-2 w-40 bg-white border rounded shadow-lg z-50">
+                            <a href="#" @onclick="@(() => ChangeLanguage("es"))" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                                🇪🇸 Español
+                            </a>
+                            <a href="#" @onclick="@(() => ChangeLanguage("en"))" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                                🇬🇧 Inglés
+                            </a>
+                        </div>
+                    }
+                </div>
+                <!-- Área de Usuario -->
+                <div class="flex items-center space-x-2">
+                    <span class="bi bi-person-circle text-2xl text-gray-700"></span>
+                    <span class="text-gray-700">User full name</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Cuerpo (contenido de la página) -->
+        <main class="flex-1 p-4 overflow-auto bg-gray-100">
+            @Body
+        </main>
+    </div>
+</div>
+
+@code {
+    // Control del estado del sidebar (colapsado o expandido)
+    private bool collapseNavMenu = false;
+    private bool IsCollapsed => collapseNavMenu;
+    private string SidebarCssClass => IsCollapsed ? "w-16" : "w-64";
+
+    // Clases para los NavLink; se ajusta la justificación según el estado del sidebar
+    private string NavLinkClass
+    {
+        get
+        {
+            var baseClasses = "flex items-center px-4 py-2 hover:bg-indigo-600 hover:text-white transition-colors duration-200";
+            var alignment = IsCollapsed ? "justify-center" : "justify-start";
+            return $"{baseClasses} {alignment}";
+        }
+    }
+
+    // Alterna el estado del sidebar
+    private void ToggleSidebar()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    // Control del dropdown de idiomas
+    private bool IsLanguageDropdownOpen = false;
+    private string CurrentLanguageLabel => LanguageService.CurrentLanguage == "es" ? "Español" : "Inglés";
+
+    private void ToggleLanguageDropdown()
+    {
+        IsLanguageDropdownOpen = !IsLanguageDropdownOpen;
+    }
+
+    private async Task ChangeLanguage(string lang)
+    {
+        await LanguageService.SetLanguage(lang);
+        IsLanguageDropdownOpen = false;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var storedLanguage = await LanguageService.GetStoredLanguageAsync();
+            await LanguageService.LoadLanguageAsync(storedLanguage);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al cargar el idioma: {ex.Message}");
+        }
+    }
+}
