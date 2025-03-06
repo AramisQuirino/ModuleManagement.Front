@@ -1,0 +1,64 @@
+﻿@page "/config/linkpro"
+@using ModuleManagement.Web.Client.Models
+@using ModuleManagement.Web.Client.Services
+@inject IConfigurationService ConfigService
+@inject NavigationManager NavigationManager
+
+@if (linkPro == null)
+{
+    <p>Cargando configuración de Link Profile...</p>
+}
+else
+{
+    <EditForm Model="linkPro" OnValidSubmit="SaveLinkPro">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="mb-3">
+            <label class="block font-semibold">Website URL:</label>
+            <InputText @bind-Value="linkPro.WebsiteUrl" class="border p-2 rounded w-full" />
+        </div>
+        <div class="mb-3">
+            <label class="block font-semibold">Whatsapp Link:</label>
+            <InputText @bind-Value="linkPro.WhatsappLink" class="border p-2 rounded w-full" />
+        </div>
+        <div class="mb-3">
+            <label class="block font-semibold">Location:</label>
+            <InputText @bind-Value="linkPro.Location" class="border p-2 rounded w-full" />
+        </div>
+        <div class="mb-3">
+            <label class="block font-semibold">Facebook:</label>
+            <InputText @bind-Value="linkPro.Facebook" class="border p-2 rounded w-full" />
+        </div>
+        <div class="mb-3">
+            <label class="block font-semibold">Instagram:</label>
+            <InputText @bind-Value="linkPro.Instagram" class="border p-2 rounded w-full" />
+        </div>
+        <div class="mb-3">
+            <label class="block font-semibold">TikTok:</label>
+            <InputText @bind-Value="linkPro.TikTok" class="border p-2 rounded w-full" />
+        </div>
+        <div class="mb-3">
+            <label class="block font-semibold">Youtube:</label>
+            <InputText @bind-Value="linkPro.Youtube" class="border p-2 rounded w-full" />
+        </div>
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+            Guardar Link Profile
+        </button>
+    </EditForm>
+}
+
+@code {
+    private LinkPro linkPro = new LinkPro();
+
+    protected override async Task OnInitializedAsync()
+    {
+        int idCompany = 1; // Ajusta según corresponda
+        linkPro = await ConfigService.GetLinkProAsync(idCompany);
+    }
+
+    private async Task SaveLinkPro()
+    {
+        await ConfigService.UpdateLinkProAsync(linkPro);
+        NavigationManager.NavigateTo("/");
+    }
+}

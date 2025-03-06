@@ -1,0 +1,337 @@
+﻿@page "/clients"
+
+@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components.Forms
+@using ModuleManagement.Web.Client.Models
+@using ModuleManagement.Web.Client.Services
+@inject IClientService ClientService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+@inject LanguageService LanguageService
+@inject ColorSchemeStateService ColorSchemeState
+@inject ValidationMessageService ValidationMessageService
+
+<PageTitle>@LanguageService.Translate("ClientsLabel")</PageTitle>
+
+<h1 class="text-3xl font-bold mb-4">@LanguageService.Translate("ClientsLabel")</h1>
+
+<button class="mb-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition duration-300" @onclick="ShowAddModal">
+    @LanguageService.Translate("NewClientLabel")
+</button>
+
+@if (clients == null)
+{
+    <p>@LanguageService.Translate("LoadingCustomersLabel")...</p>
+}
+else if (!clients.Any())
+{
+    <p>@LanguageService.Translate("NoDataFoundLabel").</p>
+}
+else
+{
+    <table class="min-w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">ID</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">@LanguageService.Translate("InputName")</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">@LanguageService.Translate("InputSurname")</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">@LanguageService.Translate("InputEmail")</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">@LanguageService.Translate("InputPhone")</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">@LanguageService.Translate("ActionsLabel")</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+            @foreach (var item in clients)
+            {
+                <tr class="hover:bg-gray-50 transition duration-200">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">@item.IdClient</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">@item.Name</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">@item.Surname</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">@item.Email</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">@item.Phone</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div class="flex space-x-2">
+                            <!-- Botón Editar con ícono y tooltip -->
+                            <button class="p-2 text-blue-600 hover:text-blue-800 transition duration-300 relative group" @onclick="() => ShowEditModal(item)">
+                                <i class="fas fa-edit"></i>
+                                <span class="absolute bottom-full mb-2 hidden group-hover:block bg-gray-800 text-white text-xs px-2 py-1 rounded">
+                                    @LanguageService.Translate("EditLabel")
+                                </span>
+                            </button>
+
+                            <!-- Botón Eliminar con ícono y tooltip -->
+                            <button class="p-2 text-red-600 hover:text-red-800 transition duration-300 relative group" @onclick="() => DeleteClient(item.IdClient)">
+                                <i class="fas fa-trash"></i>
+                                <span class="absolute bottom-full mb-2 hidden group-hover:block bg-gray-800 text-white text-xs px-2 py-1 rounded">
+                                    @LanguageService.Translate("DeleteLabel")
+                                </span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<!-- Modal para Crear/Editar Cliente -->
+<!-- Modal para Crear/Editar Cliente -->
+@if (showModal)
+{
+    <div class="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+        <div class="rounded-2xl shadow-xl max-w-lg w-full p-6 transform transition-all scale-100"
+             style="background-color: @ColorSchemeState.CurrentColorScheme.SecondaryColor; border: 2px solid @ColorSchemeState.CurrentColorScheme.TertiaryColor;">
+            <div class="flex justify-between items-center border-b pb-2"
+                 style="border-color: @ColorSchemeState.CurrentColorScheme.TertiaryColor;">
+                <h2 class="text-xl font-bold"
+                    style="color: @ColorSchemeState.CurrentColorScheme.PrimaryColor;">
+                    @(editingClient.IdClient == 0 ? LanguageService.Translate("NewClientLabel") : LanguageService.Translate("EditClientLabel"))
+                </h2>
+                <button class="text-gray-500 hover:text-gray-700 text-2xl" @onclick="HideModal">&times;</button>
+            </div>
+            <div class="mt-4">
+                <EditForm Model="editingClient" OnValidSubmit="SaveClient">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="grid grid-cols-1 gap-4">
+                        <!-- Nombre y Apellido en una sola fila -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <!-- Nombre -->
+                            <div class="form-floating">
+                                <InputText id="Name" @bind-Value="editingClient.Name" class="form-control" placeholder="@LanguageService.Translate("InputName")" />
+                                <label for="Name">@LanguageService.Translate("InputName")</label>
+                                <ValidationMessage For="@(() => editingClient.Name)" />
+                            </div>
+
+                            <!-- Apellido -->
+                            <div class="form-floating">
+                                <InputText id="Surname" @bind-Value="editingClient.Surname" class="form-control" placeholder="@LanguageService.Translate("InputSurname")" />
+                                <label for="Surname">@LanguageService.Translate("InputSurname")</label>
+                                <ValidationMessage For="@(() => editingClient.Surname)" />
+                            </div>
+                        </div>
+
+                        <!-- Correo electrónico -->
+                        <div class="form-floating">
+                            <InputText id="Email" @bind-Value="editingClient.Email" class="form-control" placeholder="@LanguageService.Translate("InputEmail")" />
+                            <label for="Email">@LanguageService.Translate("InputEmail")</label>
+                            <ValidationMessage For="@(() => editingClient.Email)" />
+                        </div>
+
+                        <!-- Teléfono y Fecha de nacimiento en una sola fila -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <!-- Teléfono -->
+                            <div class="form-floating">
+                                <InputText id="Phone" @bind-Value="editingClient.Phone" class="form-control" placeholder="@LanguageService.Translate("InputPhone")" />
+                                <label for="Phone">@LanguageService.Translate("InputPhone")</label>
+                                <ValidationMessage For="@(() => editingClient.Phone)" />
+                            </div>
+
+                            <!-- Fecha de nacimiento -->
+                            <div class="form-floating">
+                                <InputDate id="BirthDate" @bind-Value="editingClient.BirthDate" class="form-control" placeholder="@LanguageService.Translate("InputBirthdate")" />
+                                <label for="BirthDate">@LanguageService.Translate("InputBirthdate")</label>
+                                <ValidationMessage For="@(() => editingClient.BirthDate)" />
+                            </div>
+                        </div>
+                        <!-- Género -->
+                        <div class="form-floating">
+                            <InputSelect id="IdGender" @bind-Value="editingClient.IdGender" class="form-control">
+                                <option value="">@LanguageService.Translate("SelectGenderLabel")</option>
+                                @foreach (var gender in genders)
+                                {
+                                    <option value="@gender.IdGender">@gender.Name</option>
+                                }
+                            </InputSelect>
+                            <label for="IdGender">@LanguageService.Translate("InputGender")</label>
+                            <ValidationMessage For="@(() => editingClient.IdGender)" />
+                        </div>
+
+                        <!-- Identificación oficial -->
+                        <div class="form-floating">
+                            <InputText id="OfficialIdentification" @bind-Value="editingClient.OfficialIdentification" class="form-control" placeholder="@LanguageService.Translate("InputOfficialIdentification")" />
+                            <label for="OfficialIdentification">@LanguageService.Translate("InputOfficialIdentification")</label>
+                            <ValidationMessage For="@(() => editingClient.OfficialIdentification)" />
+                        </div>
+
+                        <!-- Calle -->
+                        <div class="form-floating">
+                            <InputText id="Street" @bind-Value="editingClient.Street" class="form-control" placeholder="@LanguageService.Translate("InputStreet")" />
+                            <label for="Street">@LanguageService.Translate("InputStreet")</label>
+                            <ValidationMessage For="@(() => editingClient.Street)" />
+                        </div>
+
+                        <!-- Número exterior -->
+                        <div class="form-floating">
+                            <InputText id="ExtNumber" @bind-Value="editingClient.ExtNumber" class="form-control" placeholder="@LanguageService.Translate("InputExtNumber")" />
+                            <label for="ExtNumber">@LanguageService.Translate("InputExtNumber")</label>
+                            <ValidationMessage For="@(() => editingClient.ExtNumber)" />
+                        </div>
+
+                        <!-- Colonia -->
+                        <div class="form-floating">
+                            <InputText id="Neighborhood" @bind-Value="editingClient.Neighborhood" class="form-control" placeholder="@LanguageService.Translate("InputNeighborhood")" />
+                            <label for="Neighborhood">@LanguageService.Translate("InputNeighborhood")</label>
+                            <ValidationMessage For="@(() => editingClient.Neighborhood)" />
+                        </div>
+
+                        <!-- Código postal -->
+                        <div class="form-floating">
+                            <InputText id="PostalCode" @bind-Value="editingClient.PostalCode" class="form-control" placeholder="@LanguageService.Translate("InputPostalCode")" />
+                            <label for="PostalCode">@LanguageService.Translate("InputPostalCode")</label>
+                            <ValidationMessage For="@(() => editingClient.PostalCode)" />
+                        </div>
+
+                        <!-- Estado -->
+                        <div class="form-floating">
+                            <InputText id="State" @bind-Value="editingClient.State" class="form-control" placeholder="@LanguageService.Translate("InputState")" />
+                            <label for="State">@LanguageService.Translate("InputState")</label>
+                            <ValidationMessage For="@(() => editingClient.State)" />
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end space-x-2 mt-6">
+                        <button type="button" class="px-4 py-2 rounded-lg transition duration-300"
+                                style="background-color: @ColorSchemeState.CurrentColorScheme.TertiaryColor; color: white;"
+                                @onclick="HideModal">
+                            @LanguageService.Translate("CancelLabel")
+                        </button>
+                        <button type="submit" class="px-4 py-2 rounded-lg transition duration-300"
+                                style="background-color: @ColorSchemeState.CurrentColorScheme.PrimaryColor; color: white;">
+                            @LanguageService.Translate("SaveLabel")
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+
+@code {
+    private IEnumerable<ModuleManagement.Web.Client.Models.ClientList> clients;
+    private bool showModal = false;
+    private ModuleManagement.Web.Client.Models.ClientList editingClient = new ModuleManagement.Web.Client.Models.ClientList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        clients = await ClientService.GetAllClientsAsync();
+    }
+
+    // Lista de géneros
+    private List<Gender> genders = new List<Gender>
+    {
+        new Gender { IdGender = 1, Name = "Masculino" },
+        new Gender { IdGender = 2, Name = "Femenino" },
+        new Gender { IdGender = 3, Name = "Otro" }
+    };
+
+    private void ShowAddModal()
+    {
+        editingClient = new ModuleManagement.Web.Client.Models.ClientList
+        {
+            BirthDate = DateTime.Today // Establece la fecha actual como valor predeterminado
+        };
+        showModal = true;
+    }
+
+    private void ShowEditModal(ModuleManagement.Web.Client.Models.ClientList client)
+    {
+        editingClient = new ModuleManagement.Web.Client.Models.ClientList
+            {
+                IdClient = client.IdClient,
+                Name = client.Name,
+                Surname = client.Surname,
+                Email = client.Email,
+                Phone = client.Phone,
+                BirthDate = client.BirthDate,
+                OfficialIdentification = client.OfficialIdentification,
+                IdGender = client.IdGender,
+                Street = client.Street,
+                ExtNumber = client.ExtNumber,
+                IntNumber = client.IntNumber,
+                Neighborhood = client.Neighborhood,
+                PostalCode = client.PostalCode,
+                State = client.State
+            };
+        showModal = true;
+    }
+
+    private void HideModal()
+    {
+        showModal = false;
+        editingClient = new ModuleManagement.Web.Client.Models.ClientList();
+    }
+
+    private async Task SaveClient()
+    {
+        // Limpia los valores null antes de guardar
+        CleanNullValues(editingClient);
+
+        if (editingClient.IdClient == 0)
+        {
+            await ClientService.CreateClientAsync(editingClient);
+            await JS.InvokeVoidAsync("Swal.fire", new
+            {
+                title = LanguageService.Translate("SuccessLabel"),
+                text = LanguageService.Translate("ClientCreatedSuccessfully"),
+                icon = "success",
+                confirmButtonText = LanguageService.Translate("AceptLabel")
+            });
+        }
+        else
+        {
+            try
+            {
+                await ClientService.UpdateClientAsync(editingClient);
+                await JS.InvokeVoidAsync("Swal.fire", new
+                {
+                    title = LanguageService.Translate("SuccessLabel"),
+                    text = LanguageService.Translate("SuccessfullyUpdateLabel"),
+                    icon = "success",
+                    confirmButtonText = LanguageService.Translate("AceptLabel")
+                });
+            }
+            catch
+            {
+                await JS.InvokeVoidAsync("Swal.fire", new
+                {
+                    title = "Error",
+                    text = LanguageService.Translate("NoUpdatedLabel"),
+                    icon = "error",
+                    confirmButtonText = LanguageService.Translate("AceptLabel")
+                });
+            }
+        }
+        clients = await ClientService.GetAllClientsAsync();
+        showModal = false;
+    }
+
+    private async Task DeleteClient(int idClient)
+    {
+        bool deleted = await ClientService.DeleteClientAsync(idClient);
+        if (deleted)
+        {
+            clients = await ClientService.GetAllClientsAsync();
+            await JS.InvokeVoidAsync("Swal.fire", LanguageService.Translate("EliminatedLabel"), LanguageService.Translate("ClientDeleted"), "success");
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("Swal.fire", "Error", LanguageService.Translate("ClientNotDeleted"), "error");
+        }
+    }
+
+    private void CleanNullValues(ModuleManagement.Web.Client.Models.ClientList client)
+    {
+        // Recorre todas las propiedades del objeto
+        foreach (var property in client.GetType().GetProperties())
+        {
+            // Si la propiedad es de tipo string y su valor es null, lo reemplaza por ""
+            if (property.PropertyType == typeof(string) && property.GetValue(client) == null)
+            {
+                property.SetValue(client, "");
+            }
+        }
+    }
+}

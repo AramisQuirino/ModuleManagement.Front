@@ -1,0 +1,67 @@
+﻿@page "/config/colorscheme"
+@using ModuleManagement.Web.Client.Models
+@using ModuleManagement.Web.Client.Services
+@inject IConfigurationService ConfigService
+@inject IJSRuntime JS
+
+@if (colorScheme == null)
+{
+    <p>Cargando configuración de colores...</p>
+}
+else
+{
+    <EditForm Model="colorScheme" OnValidSubmit="SaveColorScheme">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="flex items-center space-x-6 mb-4">
+            <!-- Color Primario -->
+            <div class="flex flex-col items-center">
+                <label class="font-semibold mb-2">Color Primario:</label>
+                <InputText @bind-Value="colorScheme.PrimaryColor" type="color" class="border rounded w-20 h-20 cursor-pointer" />
+            </div>
+            <!-- Color Secundario -->
+            <div class="flex flex-col items-center">
+                <label class="font-semibold mb-2">Color Secundario:</label>
+                <InputText @bind-Value="colorScheme.SecondaryColor" type="color" class="border rounded w-20 h-20 cursor-pointer" />
+            </div>
+            <!-- Color Terciario -->
+            <div class="flex flex-col items-center">
+                <label class="font-semibold mb-2">Color Terciario:</label>
+                <InputText @bind-Value="colorScheme.TertiaryColor" type="color" class="border rounded w-20 h-20 cursor-pointer" />
+            </div>
+        </div>
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+            Guardar Esquema
+        </button>
+    </EditForm>
+}
+
+@code {
+    private ColorScheme colorScheme = new ColorScheme();
+
+    protected override async Task OnInitializedAsync()
+    {
+        int idCompany = 1; // Ajusta según corresponda
+        colorScheme = await ConfigService.GetColorSchemeAsync(idCompany);
+    }
+
+    private async Task SaveColorScheme()
+    {
+        await ConfigService.UpdateColorSchemeAsync(colorScheme);
+        // Actualizamos el estado compartido para notificar a todo el proyecto
+        // Se asume que ColorSchemeStateService ya está registrado e inyectado en MainLayout
+        // Aquí usaremos JS para mostrar SweetAlert
+        await JS.InvokeVoidAsync("Swal.fire", new
+        {
+            title = "¡Éxito!",
+            text = "El esquema de colores se ha guardado correctamente.",
+            icon = "success",
+            confirmButtonText = "Aceptar"
+        });
+        // Aquí se actualiza el estado compartido
+        ColorSchemeState.SetColorScheme(colorScheme);
+    }
+
+    [Inject]
+    private ColorSchemeStateService ColorSchemeState { get; set; }
+}

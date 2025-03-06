@@ -1,0 +1,70 @@
+﻿@page "/configuration"
+@using ModuleManagement.Web.Client.Services
+@using ModuleManagement.Web.Client.Models
+@inject LanguageService LanguageService
+
+<h3 class="text-3xl font-bold mb-6">Configuración</h3>
+
+<div class="space-y-4">
+    <!-- Acordeón para Configuración de Empresa -->
+    <div class="border rounded shadow">
+        <button @onclick="@(() => ToggleSection("company"))" class="w-full text-left px-4 py-2 bg-gray-200 hover:bg-gray-300 focus:outline-none">
+            <span class="font-semibold">@LanguageService.Translate("CompaniesTitle")</span>
+        </button>
+        @if (currentSection == "company")
+        {
+            <div class="p-4 bg-white">
+                <CompanyList />
+            </div>
+        }
+    </div>
+
+    <!-- Acordeón para Configuración de Esquema de Colores -->
+    <div class="border rounded shadow">
+        <button @onclick="@(() => ToggleSection("colorscheme"))" class="w-full text-left px-4 py-2 bg-gray-200 hover:bg-gray-300 focus:outline-none">
+            <span class="font-semibold">@LanguageService.Translate("ColorSchemeTitle")</span>
+        </button>
+        @if (currentSection == "colorscheme")
+        {
+            <div class="p-4 bg-white">
+                <ConfigurationColorScheme />
+            </div>
+        }
+    </div>
+
+    <!-- Acordeón para Configuración de Link Profile -->
+    <div class="border rounded shadow">
+        <button @onclick="@(() => ToggleSection("linkpro"))" class="w-full text-left px-4 py-2 bg-gray-200 hover:bg-gray-300 focus:outline-none">
+            <span class="font-semibold">@LanguageService.Translate("LinkProTitle")</span>
+        </button>
+        @if (currentSection == "linkpro")
+        {
+            <div class="p-4 bg-white">
+                <ConfigurationLinkPro />
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    // Esta variable guarda la sección actualmente expandida.
+    private string currentSection = "";
+
+    private void ToggleSection(string section)
+    {
+        // Si la sección ya está abierta, se colapsa; de lo contrario, se abre.
+        currentSection = currentSection == section ? "" : section;
+    }
+}
+
+<style>
+    .border {
+        border-width: 10px;
+    }
+
+    .font-semibold {
+        font-weight: 300;
+        font-size: larger;
+        font-style: oblique;
+    }
+</style>

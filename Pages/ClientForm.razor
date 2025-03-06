@@ -1,0 +1,114 @@
+﻿@page "/clientform"
+@page "/clientform/{idClient:int}"
+
+@using Microsoft.AspNetCore.Components.Forms
+@using ModuleManagement.Web.Client.Models
+@using ModuleManagement.Web.Client.Services
+@inject IClientService ClientService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+
+<PageTitle>@(idClient == 0 ? "Crear Cliente" : "Editar Cliente")</PageTitle>
+
+@if (client == null)
+{
+    <p>Cargando...</p>
+}
+else
+{
+    <h1 class="text-3xl font-bold mb-4">
+        @(idClient == 0 ? "Crear Cliente" : "Editar Cliente")
+    </h1>
+
+    <EditForm Model="client" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label class="block font-semibold">Nombre:</label>
+            <InputText @bind-Value="client.Name" class="border p-2 rounded w-full" />
+        </div>
+        <div class="mb-3">
+            <label class="block font-semibold">Apellido:</label>
+            <InputText @bind-Value="client.Surname" class="border p-2 rounded w-full" />
+        </div>
+        <div class="mb-3">
+            <label class="block font-semibold">Email:</label>
+            <InputText @bind-Value="client.Email" type="email" class="border p-2 rounded w-full" />
+        </div>
+        <div class="mb-3">
+            <label class="block font-semibold">Teléfono:</label>
+            <InputText @bind-Value="client.Phone" class="border p-2 rounded w-full" />
+        </div>
+        <!-- Agrega aquí los demás campos que necesites, por ejemplo: BirthDate, OfficialIdentification, etc. -->
+
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+            Guardar
+        </button>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int idClient { get; set; }
+    [Parameter] public bool Show { get; set; }
+
+    // Declaramos 'client' sin inicializar para luego asignarle en OnInitializedAsync
+    private ModuleManagement.Web.Client.Models.ClientList client;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (idClient != 0)
+        {
+            // Intentamos obtener el cliente para edición
+            var result = await ClientService.GetClientAsync(idClient);
+            client = result ?? new ModuleManagement.Web.Client.Models.ClientList(); // Si el resultado es null, asignamos una nueva instancia
+        }
+        else
+        {
+            // En modo creación, asignamos una nueva instancia
+            client = new ModuleManagement.Web.Client.Models.ClientList();
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (idClient == 0)
+        {
+            // Crear nuevo cliente
+            client = await ClientService.CreateClientAsync(client);
+            await JS.InvokeVoidAsync("Swal.fire", new
+            {
+                title = "¡Éxito!",
+                text = "Cliente creado correctamente.",
+                icon = "success",
+                confirmButtonText = "Aceptar"
+            });
+        }
+        else
+        {
+            try
+            {
+                await ClientService.UpdateClientAsync(client);
+                await JS.InvokeVoidAsync("Swal.fire", new
+                {
+                    title = "¡Éxito!",
+                    text = "Cliente actualizado correctamente.",
+                    icon = "success",
+                    confirmButtonText = "Aceptar"
+                });
+            }
+            catch
+            {
+                await JS.InvokeVoidAsync("Swal.fire", new
+                {
+                    title = "Error",
+                    text = "No se pudo actualizar el cliente.",
+                    icon = "error",
+                    confirmButtonText = "Aceptar"
+                });
+            }
+        }
+        NavigationManager.NavigateTo("/clients");
+    }
+}

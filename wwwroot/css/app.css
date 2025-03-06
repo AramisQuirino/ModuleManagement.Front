@@ -97,3 +97,31 @@ a, .btn-link {
 code {
     color: #c02d76;
 }
+
+.sidebar {
+    background-color: var(--primary-color);
+}
+
+.header {
+    background-color: var(--tertiary-color);
+}
+
+.body-background {
+    background-color: var(--secondary-color);
+}
+
+
+:root {
+    --primary-color: @currentColorScheme.PrimaryColor;
+    --secondary-color: @currentColorScheme.SecondaryColor;
+    --tertiary-color: @currentColorScheme.TertiaryColor;
+}
+
+.relative {
+    position: relative;
+    font-size: 14px;
+}
+
+.w-64 {
+    width: 12rem;
+}

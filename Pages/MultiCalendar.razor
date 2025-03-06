@@ -2,75 +2,94 @@
 @using ModuleManagement.Web.Client.Models
 @using Microsoft.AspNetCore.Components.Forms
 
-<h1 class="text-3xl font-bold text-center mb-6">Calendario de Citas</h1>
+<!-- Contenedor principal que ocupa la pantalla y muestra un encabezado degradado -->
+<div class="min-h-screen flex flex-col bg-gray-100">
 
-<!-- Contenedor con scroll y altura fija -->
-<div class="overflow-auto border border-gray-300 rounded shadow bg-white relative" style="width: 100%; height: 800px;">
-
-    <!-- Encabezado "sticky" con profesionales -->
-    <div class="flex bg-gray-100 border-b border-gray-300 sticky top-0 z-10">
-        <!-- Columna de horas vacía en la esquina superior izquierda -->
-        <div class="w-16 font-bold text-center border-r p-2 border-gray-300">
-            Hora
-        </div>
-        @foreach (var prof in ProfessionalsList)
-        {
-            <div class="flex-1 text-center font-bold border-r p-2 border-gray-300">
-                @prof.Name
+    <!-- Encabezado degradado, mostrando la fecha y un botón flotante (+) -->
+    <div class="relative bg-gradient-to-r from-indigo-500 to-purple-600 p-6 text-white shadow-md">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm">Today</p>
+                <h1 class="text-2xl font-bold">@DateTime.Now.ToString("MMMM dd, yyyy")</h1>
             </div>
-        }
+            <!-- Botón flotante para agregar (puedes abrir un modal o navegar) -->
+            <button @onclick="AddNewEvent" class="bg-white text-indigo-600 w-10 h-10 rounded-full flex items-center justify-center shadow">
+                <i class="bi bi-plus text-xl"></i>
+            </button>
+        </div>
+        <!-- Subtítulo o leyenda opcional -->
+        <p class="text-sm mt-2 text-white/80">Calendario de Citas (Diseño Escritorio)</p>
     </div>
 
-    <!-- Cuerpo del calendario (ALTURA FIJA) -->
-    <!-- De 8:00 a 18:00 => 10 horas = 600 min; con intervalos de 15 min => 40 intervalos * 30px = 1200px -->
-    <div class="flex relative" style="height: 1200px;">
-
-        <!-- Columna de horas (lado izquierdo) con sticky -->
-        <div class="w-16 border-r border-gray-300 bg-white" style="position: sticky; left: 0; z-index: 9;">
-            @for (int i = 0; i < 40; i++)
-            {
-                var slotTime = DayStart.AddMinutes(i * 15);
-                <div class="h-[30px] text-xs text-gray-600 border-b border-gray-200 flex items-center justify-center">
-                    @slotTime.ToString("HH:mm")
-                </div>
-            }
-        </div>
-
-        <!-- Columnas para cada profesional -->
-        <div class="flex-1 flex overflow-hidden">
-            @foreach (var prof in ProfessionalsList)
-            {
-                <!-- Cada columna con position: relative -->
-                <div class="relative border-r border-gray-300 flex-1"
-                     style="height:1200px;"
-                     @onpointerdown="(args) => OnColumnPointerDown(args, prof)">
-
-                    <!-- Líneas de fondo (opcional) -->
-                    @for (int i = 0; i < 40; i++)
+    <!-- Contenedor del Calendario:
+         - "container mx-auto" para centrar
+         - "mt-[-4rem]" para que suba un poco sobre el gradiente (opcional) -->
+    <div class="container mx-auto px-4 -mt-16 flex-1">
+        <div class="bg-white rounded-lg shadow-lg p-4 relative" style="min-height: 700px;">
+            <!-- Encabezado "sticky" con profesionales -->
+            <div class="overflow-auto border border-gray-300 rounded shadow bg-white relative" style="width: 100%; height: 800px;">
+                <div class="flex bg-gray-100 border-b border-gray-300 sticky top-0 z-10">
+                    <!-- Columna de horas vacía en la esquina superior izquierda -->
+                    <div class="w-16 font-bold text-center border-r p-2 border-gray-300">
+                        Hora
+                    </div>
+                    @foreach (var prof in ProfessionalsList)
                     {
-                        <div class="absolute left-0 right-0 border-b border-gray-200"
-                             style="top:@(i*SlotSizePx)px; height:@SlotSizePx px;">
+                        <div class="flex-1 text-center font-bold border-r p-2 border-gray-300">
+                            @prof.Name
                         </div>
                     }
+                </div>
 
-                    <!-- Citas de este profesional -->
-                    @foreach (var appt in AppointmentsList.Where(a => a.IdProfessional == prof.IdProfessional))
-                    {
-                        var topPx = GetOffsetPx(appt.Date);
-                        var heightPx = GetHeightPx(appt.Date, appt.EndTime ?? appt.Date.AddMinutes(30));
-
-                        <div class="absolute bg-blue-100 shadow rounded p-2 cursor-pointer"
-                             style="top:@($"{topPx}px"); height:@($"{heightPx}px"); left:5px; right:5px; background-color: @prof.Color"
-                             @onclick="() => OpenAppointmentDetail(appt)">
-                            <div class="font-semibold text-sm">@GetClientName(appt.IdClient)</div>
-                            <div class="text-xs">@appt.CustomerNote</div>
-                            <div class="mt-1 text-xs">
-                                @appt.Date.ToString("HH:mm") - @(appt.EndTime?.ToString("HH:mm"))
+                <!-- Cuerpo del calendario (altura fija) -->
+                <div class="flex relative" style="height: 1200px;">
+                    <!-- Columna de horas (lado izquierdo) con sticky -->
+                    <div class="w-16 border-r border-gray-300 bg-white" style="position: sticky; left: 0; z-index: 9;">
+                        @for (int i = 0; i < 40; i++)
+                        {
+                            var slotTime = DayStart.AddMinutes(i * 15);
+                            <div class="h-[30px] text-xs text-gray-600 border-b border-gray-200 flex items-center justify-center">
+                                @slotTime.ToString("HH:mm")
                             </div>
-                        </div>
-                    }
+                        }
+                    </div>
+
+                    <!-- Columnas para cada profesional -->
+                    <div class="flex-1 flex overflow-hidden">
+                        @foreach (var prof in ProfessionalsList)
+                        {
+                            <div class="relative border-r border-gray-300 flex-1"
+                                 style="height:1200px;"
+                                 @onpointerdown="(args) => OnColumnPointerDown(args, prof)">
+                                <!-- Líneas de fondo (grid) -->
+                                @for (int i = 0; i < 40; i++)
+                                {
+                                    <div class="absolute left-0 right-0 border-b border-gray-200"
+                                         style="top:@(i * SlotSizePx)px; height:@(SlotSizePx)px;">
+                                    </div>
+                                }
+
+                                <!-- Citas de este profesional -->
+                                @foreach (var appt in AppointmentsList.Where(a => a.IdProfessional == prof.IdProfessional))
+                                {
+                                    var topPx = GetOffsetPx(appt.Date);
+                                    var heightPx = GetHeightPx(appt.Date, appt.EndTime ?? appt.Date.AddMinutes(30));
+
+                                    <div class="absolute bg-blue-100 shadow rounded p-2 cursor-pointer"
+                                         style="top:@($"{topPx}px"); height:@($"{heightPx}px"); left:5px; right:5px; background-color: @prof.Color"
+                                         @onclick="() => OpenAppointmentDetail(appt)">
+                                        <div class="font-semibold text-sm">@GetClientName(appt.IdClient)</div>
+                                        <div class="text-xs">@appt.CustomerNote</div>
+                                        <div class="mt-1 text-xs">
+                                            @appt.Date.ToString("HH:mm") - @(appt.EndTime?.ToString("HH:mm"))
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
                 </div>
-            }
+            </div>
         </div>
     </div>
 </div>
@@ -197,16 +216,16 @@
 }
 
 @code {
-    // Configuración: 8:00 a 18:00 => 10 horas => 600 min => con intervalos de 15 min => 40 intervalos * 30px = 1200 px
+    // Configuración: 8:00 a 18:00 => 10 horas => 600 min => con intervalos de 15 min => 40 intervalos * 30px = 1200px
     DateTime DayStart = DateTime.Today.AddHours(8);
     DateTime DayEnd = DateTime.Today.AddHours(18);
-    private int SlotSizePx = 30; // px por cada 15 min
+    private int SlotSizePx = 30; // 30px por cada 15 min
 
     // Datos de ejemplo
     public List<Professionals> ProfessionalsList { get; set; } = new List<Professionals>
     {
         new Professionals { IdProfessional = 1, Name = "Dr. John Doe", Color = "#ea7a57" },
-        new Professionals { IdProfessional = 2, Name = "Dra. Alice Smith", Color = "rgb(53, 124, 210)" },
+        new Professionals { IdProfessional = 2, Name = "Dra. Alice Smith", Color = "rgb(53,124,210)" },
         new Professionals { IdProfessional = 3, Name = "Dr. Robson Lee", Color = "#7fa900" }
     };
 
@@ -237,7 +256,7 @@
     public NewAppointmentModel NewAppointment { get; set; } = new NewAppointmentModel();
     public List<int> SelectedServiceIds { get; set; } = new List<int>();
 
-    // Al hacer clic en la columna para crear cita, se evita empalmes
+    // Al hacer clic en la columna para crear cita
     private void OnColumnPointerDown(PointerEventArgs args, Professionals prof)
     {
         double offsetY = args.OffsetY;
@@ -359,12 +378,12 @@
         }
         else
         {
-            NewAppointment.EndDate = NewAppointment.Date.AddMinutes(30); // Por defecto 30 min
+            NewAppointment.EndDate = NewAppointment.Date.AddMinutes(30);
         }
         NewAppointment.EndTimeStr = NewAppointment.EndDate.ToString("HH:mm");
     }
 
-    // Abrir detalle
+    // Abrir detalle de la cita
     void OpenAppointmentDetail(Appointment appt)
     {
         SelectedAppointment = appt;
@@ -376,8 +395,7 @@
                 EndDate = appt.EndTime ?? appt.Date.AddMinutes(30),
                 CustomerNote = appt.CustomerNote,
                 DateStr = appt.Date.ToString("HH:mm"),
-                EndTimeStr = (appt.EndTime ?? appt.Date.AddMinutes(30)).ToString("HH:mm"),
-
+                EndTimeStr = (appt.EndTime ?? appt.Date.AddMinutes(30)).ToString("HH:mm")
             };
         ShowDetailModal = true;
     }
@@ -405,12 +423,18 @@
         new Status { IdStatus = 3, Name = "Cancelado", Color = "#dc3545" }
     };
 
-    // Podrías usarlo si deseas colorear la cita según status
     string GetStatusColor(int statusId)
         => StatusList.FirstOrDefault(s => s.IdStatus == statusId)?.Color ?? "#6c757d";
 
-    string GetProfessionalName(int professionalId) =>
-        ProfessionalsList.FirstOrDefault(p => p.IdProfessional == professionalId)?.Name ?? "Sin Profesional";
+    string GetProfessionalName(int professionalId)
+        => ProfessionalsList.FirstOrDefault(p => p.IdProfessional == professionalId)?.Name ?? "Sin Profesional";
+
+    // Método de ejemplo para el botón flotante (+)
+    private void AddNewEvent()
+    {
+        // Lógica para abrir un modal de nueva cita, o cualquier otra acción
+        Console.WriteLine("¡Botón + presionado!");
+    }
 
     // Modelos de ejemplo
     public class NewAppointmentModel

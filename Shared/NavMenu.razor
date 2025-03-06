@@ -1,7 +1,7 @@
 ﻿@inject LanguageService LanguageService
 
 <div class="bg-indigo-900 p-4 flex items-center justify-between">
-    <a class="text-white text-lg font-bold">ModuleManagement.Front</a>
+    <a class="text-white text-lg font-bold">ModuleManagement.Web.Client</a>
     <button title="Navigation menu" class="text-white p-2" @onclick="ToggleNavMenu">
         <span class="@(collapseNavMenu ? "bi bi-x" : "bi bi-list")" aria-hidden="true"></span>
     </button>
@@ -32,7 +32,7 @@
 
         <!-- Opción: Agenda (Scheduler) -->
         <div class="relative group">
-            <NavLink class="@NavLinkClass" href="/multischeduler">
+            <NavLink class="@NavLinkClass" href="/reactcalendar">
                 <span class="bi bi-calendar-fill mr-2"></span>
                 @if (!IsCollapsed)
                 {

@@ -1,0 +1,41 @@
+﻿@page "/reactcalendar"
+@inject IJSRuntime JS
+
+<div id="reactcalendar"></div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var professionals = new[]
+            {
+                new { id = 1, name = "Dr. John Doe", color = "#ea7a57" },
+                new { id = 2, name = "Dra. Alice Smith", color = "rgb(53,124,210)" },
+                new { id = 3, name = "Dr. Robson Lee", color = "#7fa900" }
+            };
+
+            var appointments = new[]
+            {
+                new {
+                    id = 1,
+                    professionalId = 1,
+                    clientName = "Juan Pérez",
+                    note = "Consulta inicial",
+                    startTime = DateTime.Today.AddHours(9).ToString(),
+                    endTime = DateTime.Today.AddHours(9).AddMinutes(30).ToString()
+                },
+                new {
+                    id = 2,
+                    professionalId = 2,
+                    clientName = "María García",
+                    note = "Terapia de seguimiento",
+                    startTime = DateTime.Today.AddHours(10).ToString(),
+                    endTime = DateTime.Today.AddHours(10).AddMinutes(45).ToString()
+                }
+            };
+
+            await JS.InvokeVoidAsync("renderReactCalendar", "reactcalendar", professionals, appointments);
+        }
+    }
+}

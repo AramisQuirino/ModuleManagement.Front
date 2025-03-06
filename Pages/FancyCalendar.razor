@@ -1,0 +1,223 @@
+﻿@page "/fancycalendar"
+@using ModuleManagement.Web.Client.Models
+@using Microsoft.AspNetCore.Components.Forms
+
+<h1 class="text-3xl font-bold text-center mb-6">Calendario de Citas</h1>
+
+<!-- Contenedor con scroll y altura fija -->
+<div class="overflow-auto border border-gray-300 rounded shadow bg-white relative" style="width: 100%; height: 800px;">
+    <!-- Encabezado "sticky" con profesionales -->
+    <div class="flex bg-gray-100 border-b border-gray-300 sticky top-0 z-10">
+        <!-- Columna de horas vacía en la esquina superior izquierda -->
+        <div class="w-16 font-bold text-center border-r p-2 border-gray-300">Hora</div>
+        @foreach (var prof in ProfessionalsList)
+        {
+            <div class="flex-1 text-center font-bold border-r p-2 border-gray-300">
+                @prof.Name
+            </div>
+        }
+    </div>
+
+    <!-- Cuerpo del calendario -->
+    <div class="flex relative" style="height: 1200px;">
+        <!-- Columna de horas -->
+        <div class="w-16 border-r border-gray-300 bg-white" style="position: sticky; left: 0; z-index: 9;">
+            @for (int i = 0; i < 40; i++)
+            {
+                var slotTime = DayStart.AddMinutes(i * 15);
+                <div class="h-[30px] text-xs text-gray-600 border-b border-gray-200 flex items-center justify-center">
+                    @slotTime.ToString("HH:mm")
+                </div>
+            }
+        </div>
+
+        <!-- Columnas para cada profesional -->
+        <div class="flex-1 flex overflow-hidden">
+            @foreach (var prof in ProfessionalsList)
+            {
+                <div class="relative border-r border-gray-300 flex-1" style="height:1200px;"
+                     @onmousedown="(MouseEventArgs args) => OnColumnMouseDown(args, prof)">
+                    @for (int i = 0; i < 40; i++)
+                    {
+                        <div class="absolute left-0 right-0 border-b border-gray-200"
+                             style="top:@(i * SlotSizePx)px; height:@SlotSizePx px;">
+                        </div>
+                    }
+                    @foreach (var appt in AppointmentsList.Where(a => a.IdProfessional == prof.IdProfessional))
+                    {
+                        var topPx = GetOffsetPx(appt.Date);
+                        var heightPx = GetHeightPx(appt.Date, appt.EndTime ?? appt.Date.AddMinutes(30));
+                        <div class="absolute shadow rounded p-2 cursor-pointer"
+                             style="top:@($"{topPx}px"); height:@($"{heightPx}px"); left:5px; right:5px; background-color: @prof.Color"
+                             @onclick="() => OpenAppointmentDetail(appt)">
+                            <div class="font-semibold text-sm">@GetClientName(appt.IdClient)</div>
+                            <div class="text-xs">@appt.CustomerNote</div>
+                            <div class="mt-1 text-xs">
+                                @appt.Date.ToString("HH:mm") - @(appt.EndTime?.ToString("HH:mm"))
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Aquí se pueden agregar los modales, etc. -->
+@code {
+    // Variables de configuración del calendario
+    DateTime DayStart = DateTime.Today.AddHours(8);
+    DateTime DayEnd = DateTime.Today.AddHours(18);
+    int SlotSizePx = 30; // Tamaño del slot en píxeles (15 minutos)
+
+    // Listas de datos de ejemplo
+    public List<Professionals> ProfessionalsList { get; set; } = new List<Professionals>
+    {
+        new Professionals { IdProfessional = 1, Name = "Dr. John Doe", Color = "#ea7a57" },
+        new Professionals { IdProfessional = 2, Name = "Dra. Alice Smith", Color = "rgb(53, 124, 210)" },
+        new Professionals { IdProfessional = 3, Name = "Dr. Robson Lee", Color = "#7fa900" }
+    };
+
+    public List<Appointment> AppointmentsList { get; set; } = new List<Appointment>();
+
+    public List<int> SelectedServiceIds { get; set; } = new List<int>();
+
+    // Modelo para la creación/edición de citas
+    public NewAppointmentModel NewAppointment { get; set; } = new NewAppointmentModel();
+
+    // Métodos para manejar eventos
+
+    // Cambié @onpointerdown a @onmousedown para usar MouseEventArgs
+    private void OnColumnMouseDown(MouseEventArgs args, Professionals prof)
+    {
+        // Nota: args.ClientY devuelve la posición relativa a la ventana.
+        // Para obtener la posición relativa al elemento, deberás calcular el offset adecuado.
+        // Aquí se usa un valor simulado para ilustrar.
+        double offsetY = args.ClientY - 100; // Ajusta este valor según el offset real del elemento
+        double intervals = offsetY / SlotSizePx;
+        var clickedTime = DayStart.AddMinutes(intervals * 15);
+
+        // Lógica para evitar empalmes
+        var lastAppt = AppointmentsList
+            .Where(a => a.IdProfessional == prof.IdProfessional && a.EndTime <= clickedTime)
+            .OrderByDescending(a => a.EndTime)
+            .FirstOrDefault();
+        DateTime apptStart = lastAppt != null ? lastAppt.EndTime.Value : clickedTime;
+        if (apptStart < DayStart)
+            apptStart = DayStart;
+        if (apptStart >= DayEnd)
+            apptStart = DayEnd.AddMinutes(-15);
+        var apptEnd = apptStart.AddMinutes(30);
+        if (apptEnd > DayEnd)
+            apptEnd = DayEnd;
+
+        // Inicializa la nueva cita
+        NewAppointment = new NewAppointmentModel
+            {
+                IdProfessional = prof.IdProfessional,
+                Date = apptStart,
+                EndDate = apptEnd,
+                CustomerNote = "",
+                ServiceIds = new List<int>()
+            };
+        NewAppointment.DateStr = apptStart.ToString("HH:mm");
+        NewAppointment.EndTimeStr = apptEnd.ToString("HH:mm");
+
+        // Aquí se puede mostrar el modal para crear la cita
+        // Ejemplo: ShowModal = true; StateHasChanged();
+    }
+
+    // Método para abrir el detalle de una cita
+    private void OpenAppointmentDetail(Appointment appt)
+    {
+        // Inicializa el modelo de edición
+        NewAppointment = new NewAppointmentModel
+            {
+                IdClient = appt.IdClient,
+                IdProfessional = appt.IdProfessional,
+                Date = appt.Date,
+                EndDate = appt.EndTime ?? appt.Date.AddMinutes(30),
+                CustomerNote = appt.CustomerNote,
+                DateStr = appt.Date.ToString("HH:mm"),
+                EndTimeStr = (appt.EndTime ?? appt.Date.AddMinutes(30)).ToString("HH:mm"),
+                ServiceIds = new List<int>()
+            };
+
+        // Muestra el modal de detalle
+        // Ejemplo: ShowDetailModal = true;
+    }
+
+    // Método para recalcular la hora de fin basado en la duración de los servicios seleccionados
+    private void RecalculateEndTime()
+    {
+        int totalMinutes = 0;
+        foreach (var serviceId in SelectedServiceIds)
+        {
+            // Aquí se debería buscar el servicio en la lista de servicios y sumar su duración.
+            // Por simplicidad, se suma 30 minutos por servicio.
+            totalMinutes += 30;
+        }
+        if (totalMinutes > 0)
+        {
+            NewAppointment.EndDate = NewAppointment.Date.AddMinutes(totalMinutes);
+        }
+        else
+        {
+            NewAppointment.EndDate = NewAppointment.Date.AddMinutes(30);
+        }
+        NewAppointment.EndTimeStr = NewAppointment.EndDate.ToString("HH:mm");
+    }
+
+    // Helper para calcular el offset en píxeles según la hora de inicio de la cita
+    private int GetOffsetPx(DateTime startTime)
+    {
+        var totalMinutes = (startTime - DayStart).TotalMinutes;
+        double intervals = totalMinutes / 15;
+        return (int)(intervals * SlotSizePx);
+    }
+
+    // Helper para calcular la altura en píxeles de la cita
+    private int GetHeightPx(DateTime startTime, DateTime endTime)
+    {
+        var totalMinutes = (endTime - startTime).TotalMinutes;
+        double intervals = totalMinutes / 15;
+        return (int)(intervals * SlotSizePx);
+    }
+
+    // Ejemplo de método para obtener el nombre de un cliente (a implementar según tus datos)
+    private string GetClientName(int clientId)
+    {
+        // Implementa la búsqueda según tu lista de clientes o servicio
+        return $"Cliente {clientId}";
+    }
+
+    // Definiciones de modelos usados en el componente
+    public class NewAppointmentModel
+    {
+        public int IdClient { get; set; }
+        public int IdProfessional { get; set; }
+        public DateTime Date { get; set; }
+        public DateTime EndDate { get; set; }
+        public string CustomerNote { get; set; } = string.Empty;
+        public string DateStr { get; set; } = string.Empty;
+        public string EndTimeStr { get; set; } = string.Empty;
+        public List<int> ServiceIds { get; set; } = new List<int>();
+    }
+
+    public class Professionals
+    {
+        public int IdProfessional { get; set; }
+        public string Name { get; set; } = "";
+        public string Color { get; set; } = "#000";
+    }
+
+    public class Appointment
+    {
+        public int IdAppointment { get; set; }
+        public int IdClient { get; set; }
+        public int IdProfessional { get; set; }
+        public DateTime Date { get; set; }
+        public DateTime? EndTime { get; set; }
+        public string CustomerNote { get; set; } = "";
+    }
+}

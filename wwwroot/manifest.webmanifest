@@ -1,6 +1,6 @@
 {
-  "name": "ModuleManagement.Front",
-  "short_name": "ModuleManagement.Front",
+  "name": "ModuleManagement.Web.Client",
+  "short_name": "ModuleManagement.Web.Client",
   "id": "./",
   "start_url": "./",
   "display": "standalone",

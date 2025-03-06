@@ -1,12 +1,10 @@
-﻿@page "/companies"
-@using ModuleManagement.Web.Client.Models
+﻿@page "/config/companies"
 @using ModuleManagement.Web.Client.Services
+@using ModuleManagement.Web.Client.Models
 @inject ICompanyService CompanyService
 @inject LanguageService LanguageService
 @inject IJSRuntime JsRuntime
 @inject NavigationManager NavigationManager
-
-<PageTitle>@LanguageService.Translate("CompaniesTitle")</PageTitle>
 
 <div class="max-w-7xl mx-auto px-4 py-6">
     @if (companies == null)
@@ -21,7 +19,6 @@
     {
         <!-- Encabezado de la sección -->
         <div class="flex justify-between items-center mb-6">
-            <h3 class="text-3xl font-bold text-gray-800">@LanguageService.Translate("CompaniesTitle")</h3>
             <button class="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 shadow" @onclick="ShowAddModal">
                 @LanguageService.Translate("NewCompanyButton")
             </button>
